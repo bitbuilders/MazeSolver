@@ -25,14 +25,7 @@ namespace MazeSolver
 
             foreach (Node node in List)
             {
-                Node n = new Node(node.Tag);
-
-                foreach (Node near in node.Near)
-                {
-                    n.Near.Add(new Node(near.Tag));
-                }
-
-                list.List.Add(n);
+                list.List.Add(node);
             }
 
             return list;
@@ -42,10 +35,14 @@ namespace MazeSolver
         {
             StringBuilder sb = new StringBuilder();
 
+            sb.Append($"Start: {Start}\n");
+            sb.Append($"End: {End}\n");
+            sb.Append("~~~~~~~~~~~~\n");
             foreach (Node n in List)
             {
                 sb.Append(n.ToString());
             }
+            sb.Append("~~~~~~~~~~~~\n");
 
             return sb.ToString();
         }
