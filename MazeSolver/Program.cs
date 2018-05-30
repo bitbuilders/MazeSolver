@@ -50,7 +50,7 @@ namespace MazeSolver
             for (int i = 0; i < lists.Count; ++i)
             {
                 string path = "";
-                bool solved = Solver.BuildKruskalMST(lists[i]);
+                bool solved = Solver.BuildKruskalMST(lists[i], out path);
                 if (!solved)
                 {
                     sb.Append($"Maze {i + 1} cannot be solved\n");

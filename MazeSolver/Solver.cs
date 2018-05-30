@@ -33,7 +33,7 @@ namespace MazeSolver
             bool equal = false;
 
             Edge edge = (Edge)obj;
-            if ((edge.A == A && edge.B == B) || (edge.A == B && edge.B == A))
+            if ((edge.A == A && edge.B == B))
                 equal = true;
 
             return equal;
@@ -42,6 +42,11 @@ namespace MazeSolver
         public int CompareTo(object obj)
         {
             return (int)(Length - ((Edge)obj).Length);
+        }
+
+        public override string ToString()
+        {
+            return $"{A.Tag} <= {Length} => {B.Tag}";
         }
     }
 
@@ -86,90 +91,129 @@ namespace MazeSolver
             }
         }
 
-        public static bool BuildKruskalMST(AdjacencyList list)
+        public static bool BuildKruskalMST(AdjacencyList list, out string result)
         {
             bool solved = false;
 
-            List<Edge> edges = CreateEdges(list);
-            SortEdges(edges);
+            List<List<Node>> trees = CreateTrees(list);
+            List<List<Edge>> mstTrees = CreateEdgesForTrees(trees);
+            foreach (var edges in mstTrees)
+            {
+                SortEdges(edges);
+            }
+            Console.WriteLine(trees.Count);
+            foreach (List<Edge> tree in mstTrees)
+            {
+                foreach (Edge edge in tree)
+                {
+                    Console.WriteLine(edge);
+                }
+                Console.WriteLine();
+            }
 
-            CreateTrees(edges);
+            StringBuilder sb = new StringBuilder();
+
+
+
+            result = sb.ToString();
 
             return solved;
         }
 
-        static List<Edge> currentEdges;
-
-        private static List<List<Edge>> CreateTrees(List<Edge> startingEdges)
+        private static bool HasCycle(List<Edge> tree)
         {
-            currentEdges = startingEdges;
-            List<List<Edge>> trees = new List<List<Edge>>();
-            List<Edge> seen = new List<Edge>();
+            bool hasCycle = false;
 
-            TraverseTrees(currentEdges[0], seen);
 
-            Console.WriteLine($"Seen: {seen.Count}, Actual: {startingEdges.Count}");
-            if (seen.Count < currentEdges.Count)
+
+            return hasCycle;
+        }
+
+        private static List<List<Node>> CreateTrees(AdjacencyList list)
+        {
+            List<List<Node>> trees = new List<List<Node>>();
+            trees.Add(new List<Node>() { list.List[0] });
+
+            for (int i = 1; i < list.List.Count; ++i)
             {
-
+                Node currentNode = list.List[i];
+                for (int j = 0; j < trees.Count; ++j)
+                {
+                    List<Node> tree = null;
+                    foreach (Node node in trees[j])
+                    {
+                        bool hasRoute = false;
+                        HasRouteTo(currentNode, node, new List<Node>(), ref hasRoute);
+                        if (hasRoute)
+                        {
+                            tree = trees[j];
+                            break;
+                        }
+                    }
+                    if (tree != null)
+                    {
+                        tree.Add(currentNode);
+                        break;
+                    }
+                    else if (j == trees.Count - 1 || trees == null)
+                    {
+                        trees.Add(new List<Node>() { currentNode });
+                        break; // Don't really need this break
+                    }
+                }
             }
 
             return trees;
         }
 
-        private static void TraverseTrees(Edge current, List<Edge> seen)
+        private static List<List<Edge>> CreateEdgesForTrees(List<List<Node>> trees)
         {
-            if (seen.Contains(current))
-                return;
+            List<List<Edge>> treeEdges = new List<List<Edge>>();
 
-            seen.Add(current);
-            List<Edge> possibleEdges = GetPossibleEdges(current);
-            for (int i = 0; i < possibleEdges.Count; ++i)
+            foreach (List<Node> tree in trees)
             {
-                TraverseTrees(possibleEdges[i], seen);
-            }
-        }
-
-        private static List<Edge> GetPossibleEdges(Edge edge)
-        {
-            List<Edge> edges = new List<Edge>();
-
-            for (int i = 0; i < currentEdges.Count; ++i)
-            {
-                if (currentEdges[i].Contains(edge) && !edges.Contains(edge))
+                treeEdges.Add(new List<Edge>());
+                foreach (Node n in tree)
                 {
-                    edges.Add(edge);
-                }
-            }
-
-            return edges;
-        }
-
-        private static List<Edge> CreateEdges(AdjacencyList list)
-        {
-            List<Edge> edges = new List<Edge>();
-            foreach (Node node in list.List)
-            {
-                foreach (AdjacentNode adjNode in node.Near)
-                {
-                    Edge e = new Edge(node, adjNode.Node, adjNode.Weight);
-                    bool contains = false;
-                    foreach (Edge edge in edges)
+                    foreach (AdjacentNode an in n.Near)
                     {
-                        if (edge.Equals(e))
+                        Edge edge = new Edge(n, an.Node, an.Weight);
+                        bool contains = false;
+                        foreach (Edge e in treeEdges[treeEdges.Count - 1])
                         {
-                            contains = true;
-                            break;
+                            if (e.Equals(edge))
+                            {
+                                contains = true;
+                                break;
+                            }
+                        }
+                        if (!contains)
+                        {
+                            treeEdges[treeEdges.Count - 1].Add(edge);
                         }
                     }
-                    if (!contains)
-                    {
-                        edges.Add(e);
-                    }
                 }
             }
 
-            return edges;
+            return treeEdges;
+        }
+
+        private static void HasRouteTo(Node current, Node destination, List<Node> path, ref bool hasRoute)
+        {
+            if (path.Contains(current))
+                return;
+
+            path.Add(current);
+            if (current == destination || hasRoute)
+            {
+                hasRoute = true;
+                return;
+            }
+            
+            foreach (AdjacentNode node in current.Near)
+            {
+                HasRouteTo(node.Node, destination, new List<Node>(path), ref hasRoute);
+            }
         }
 
         private static void SortEdges(List<Edge> edges)
