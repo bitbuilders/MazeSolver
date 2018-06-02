@@ -39,6 +39,11 @@ namespace MazeSolver
             return equal;
         }
 
+        public bool EqualsReverse(Edge edge)
+        {
+            return A == edge.B && B == edge.A;
+        }
+
         public int CompareTo(object obj)
         {
             return (int)(Length - ((Edge)obj).Length);
@@ -91,42 +96,138 @@ namespace MazeSolver
             }
         }
 
-        public static bool BuildKruskalMST(AdjacencyList list, out string result)
+        public static void BuildKruskalMST(AdjacencyList list, out string result)
         {
-            bool solved = false;
-
             List<List<Node>> trees = CreateTrees(list);
             List<List<Edge>> mstTrees = CreateEdgesForTrees(trees);
             foreach (var edges in mstTrees)
             {
                 SortEdges(edges);
             }
-            Console.WriteLine(trees.Count);
-            foreach (List<Edge> tree in mstTrees)
+            
+            List<List<Edge>> chosenEdges = new List<List<Edge>>();
+
+            for (int i = 0; i < mstTrees.Count; ++i)
             {
-                foreach (Edge edge in tree)
-                {
-                    Console.WriteLine(edge);
-                }
-                Console.WriteLine();
+                List<Edge> tree = mstTrees[i];
+                List<Edge> chosen = new List<Edge>();
+                chosenEdges.Add(chosen);
+                TraverseMST(mstTrees[i][0], 0, ref tree, ref chosen);
             }
 
+            List<string> hubs = new List<string>();
+
+
+            string output = MSTTreesToString(chosenEdges, hubs);
+
+            result = output;
+        }
+
+        private static string MSTTreesToString(List<List<Edge>> trees, List<string> hubs)
+        {
             StringBuilder sb = new StringBuilder();
+            int treeCount = 1;
+            foreach (var tree in trees)
+            {
+                List<Node> nodes = new List<Node>();
+                double weight = 0.0;
+                sb.Append($"\n---MST Tree {treeCount++}---\nNodes routed: ");
+                if (tree.Count > 0)
+                {
+                    nodes.Add(tree[0].A);
+                    nodes.Add(tree[0].B);
+                    sb.Append($"{tree[0].A.Tag}, {tree[0].B.Tag}");
+                    weight += tree[0].Length;
+                }
 
+                for (int i = 1; i < tree.Count; i++)
+                {
+                    Edge edge = tree[i];
+                    if (!nodes.Contains(edge.A))
+                    {
+                        nodes.Add(edge.A);
+                        sb.Append($", {edge.A.Tag}");
+                    }
+                    if (!nodes.Contains(edge.B))
+                    {
+                        nodes.Add(edge.B);
+                        sb.Append($", {edge.B.Tag}");
+                    }
+                    weight += edge.Length;
+                }
+                if (nodes.Count == 0)
+                {
+                    sb.Append("Could not be solved\n");
+                }
+                else
+                {
+                    sb.Append($"\nTotal length required: {weight} ft.\n");
+                    sb.Append($"Optimal hub placement: {hubs[treeCount - 2]}");
+                }
+                sb.Append("\n");
+            }
 
+            return sb.ToString();
+        }
 
-            result = sb.ToString();
+        private static void TraverseMST(Edge current, int index, ref List<Edge> tree, ref List<Edge> chosen)
+        {
+            if (index >= tree.Count)
+                return;
 
-            return solved;
+            chosen.Add(current);
+
+            if (HasCycle(chosen))
+            {
+                chosen.Remove(current);
+            }
+
+            index++;
+            if (index < tree.Count)
+                TraverseMST(tree[index], index, ref tree, ref chosen);
         }
 
         private static bool HasCycle(List<Edge> tree)
         {
             bool hasCycle = false;
 
-
+            List<Edge> path = new List<Edge>();
+            TraverseCycle(tree[0], null, tree, ref path, ref hasCycle);
 
             return hasCycle;
+        }
+
+        private static void TraverseCycle(Edge current, Edge previous, List<Edge> tree, ref List<Edge> path, ref bool has)
+        {
+            if (path.Contains(current) || has)
+            {
+                has = true;
+                return;
+            }
+
+            has = false;
+            path.Add(current);
+
+            List<Edge> nearby = GetAttachments(current, previous, tree);
+            foreach (Edge e in nearby)
+            {
+                TraverseCycle(e, current, tree, ref path, ref has);
+            }
+        }
+
+        private static List<Edge> GetAttachments(Edge edge, Edge previous, List<Edge> tree)
+        {
+            List<Edge> edges = new List<Edge>();
+
+            for (int i = 0; i < tree.Count; i++)
+            {
+                if (tree[i] != edge && tree[i].Contains(edge) && tree[i] != previous)
+                {
+                    edges.Add(tree[i]);
+                }
+            }
+
+            return edges;
         }
 
         private static List<List<Node>> CreateTrees(AdjacencyList list)
@@ -181,7 +282,7 @@ namespace MazeSolver
                         bool contains = false;
                         foreach (Edge e in treeEdges[treeEdges.Count - 1])
                         {
-                            if (e.Equals(edge))
+                            if (e.Equals(edge) || e.EqualsReverse(edge))
                             {
                                 contains = true;
                                 break;
