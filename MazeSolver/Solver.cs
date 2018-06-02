@@ -28,6 +28,16 @@ namespace MazeSolver
             return contains;
         }
 
+        public bool Contains(Node node)
+        {
+            bool contains = false;
+
+            if (A == node || B == node)
+                contains = true;
+
+            return contains;
+        }
+
         public override bool Equals(object obj)
         {
             bool equal = false;
@@ -116,11 +126,43 @@ namespace MazeSolver
             }
 
             List<string> hubs = new List<string>();
-
+            foreach (var tree in chosenEdges)
+            {
+                GetHubPlacements(ref hubs, tree);
+            }
 
             string output = MSTTreesToString(chosenEdges, hubs);
 
             result = output;
+        }
+
+        private static void GetHubPlacements(ref List<string> hubs, List<Edge> tree)
+        {
+            double smallestDiff = double.MaxValue;
+            Node node = null;
+            for (int i = 0; i < tree.Count; i++)
+            {
+                //
+            }
+
+            if (node != null)
+            {
+                hubs.Add($"{node.Tag} (Diff = {smallestDiff})");
+            }
+        }
+
+        private static bool IsLeaf(Node node, List<Edge> tree)
+        {
+            int neighbors = 0;
+            foreach (Edge edge in tree)
+            {
+                if (edge.Contains(node))
+                {
+                    neighbors++;
+                }
+            }
+
+            return neighbors == 1;
         }
 
         private static string MSTTreesToString(List<List<Edge>> trees, List<string> hubs)
