@@ -125,6 +125,14 @@ namespace MazeSolver
                 TraverseMST(mstTrees[i][0], 0, ref tree, ref chosen);
             }
 
+            //foreach (var tree in chosenEdges)
+            //{
+            //    foreach (var edge in tree)
+            //    {
+            //        Console.WriteLine(edge);
+            //    }
+            //}
+
             List<string> hubs = new List<string>();
             foreach (var tree in chosenEdges)
             {
@@ -153,30 +161,49 @@ namespace MazeSolver
         private static void GetHubPlacements(ref List<string> hubs, List<Edge> tree)
         {
             List<DistToTargetNode> distances = new List<DistToTargetNode>();
-            for (int i = 0; i < tree.Count; i++)
+            List<Node> nodeTree = new List<Node>();
+            foreach (Edge e in tree)
             {
-                Edge e = tree[i];
-                List<Node> seen = new List<Node>();
-                for (int j = 0; j < tree.Count; j++)
+                if (!nodeTree.Contains(e.A))
+                    nodeTree.Add(e.A);
+                if (!nodeTree.Contains(e.B))
+                    nodeTree.Add(e.B);
+            }
+            foreach (Node n in nodeTree)
+            {
+                foreach (Node n2 in nodeTree)
                 {
-                    Edge e2 = tree[j];
-                    if (seen.Contains(e2.A) || seen.Contains(e2.B))
-                        continue;
-                    if (e2 == e)
-                        continue;
-
-                    seen.Add(e2.A);
-                    seen.Add(e2.B);
-
-                    AddShortestToList(e, e2, ref distances);
+                    if (n != n2)
+                    {
+                        AddShortestToList(n, n2, ref distances, nodeTree, tree);
+                    }
                 }
             }
+            //for (int i = 0; i < tree.Count; i++)
+            //{
+            //    Edge e = tree[i];
+            //    List<Node> seen = new List<Node>();
+            //    for (int j = 0; j < tree.Count; j++)
+            //    {
+            //        Edge e2 = tree[j];
+            //        if (seen.Contains(e2.A) || seen.Contains(e2.B))
+            //            continue;
+            //        if (e2 == e)
+            //            continue;
+
+            //        seen.Add(e2.A);
+            //        seen.Add(e2.B);
+
+            //        AddShortestToList(e, e2, ref distances, nodeTree);
+            //    }
+            //}
 
             DistToTargetNode largest = null;
             DistToTargetNode nextLargest = null;
             double smallestDiff = double.MaxValue;
             foreach (var d in distances)
             {
+                Console.WriteLine(d.distance);
                 if (largest == null || d.distance > largest.distance)
                 {
                     largest = d;
@@ -204,19 +231,13 @@ namespace MazeSolver
             }
         }
 
-        private static void AddShortestToList(Edge destination, Edge start, ref List<DistToTargetNode> list)
+        private static void AddShortestToList(Node destination, Node start, ref List<DistToTargetNode> list, List<Node> nodeTree, List<Edge> edges)
         {
-            List<AdjacentNode> path = new List<AdjacentNode>();
-            GetDistanceToNode(destination.A, start.A, start.A.Near[0], 0.0, ref path, ref list);
-            path.Clear();
-            GetDistanceToNode(destination.B, start.A, start.A.Near[0], 0.0, ref path, ref list);
-            path.Clear();
-            GetDistanceToNode(destination.A, start.B, start.B.Near[0], 0.0, ref path, ref list);
-            path.Clear();
-            GetDistanceToNode(destination.B, start.B, start.B.Near[0], 0.0, ref path, ref list);
+            List<Node> path = new List<Node>();
+            GetDistanceToNode(start, start, 0.0, nodeTree, edges, ref path, ref list);
         }
 
-        private static void GetDistanceToNode(Node node, Node start, AdjacentNode current, double currentLength, ref List<AdjacentNode> path, ref List<DistToTargetNode> list)
+        private static void GetDistanceToNode(Node start, Node current, double currentLength, List<Node> tree, List<Edge> edges, ref List<Node> path, ref List<DistToTargetNode> list)
         {
             if (current == null)
                 return;
@@ -225,21 +246,28 @@ namespace MazeSolver
                 return;
 
             path.Add(current);
-            if (node == current.Node)
-            {
-                list.Add(new DistToTargetNode(node, start, currentLength));
-                return;
-            }
-
-            currentLength += current.Weight;
 
             //TODO: Don't use isleaf function. Figure out the two biggest numbers. Not min and max, but maxest max and next closest max. Determine diff from that.
-
-
-            foreach (AdjacentNode an in current.Node.Near)
+            
+            foreach (AdjacentNode an in current.Near)
             {
-                 GetDistanceToNode(node, start, an, currentLength, ref path, ref list);
+                bool edgeHasNode = false;
+                foreach (Edge e in edges)
+                {
+                    if (e.Contains(an.Node) && e.Contains(current))
+                    {
+                        edgeHasNode = true;
+                        break;
+                    }
+                }
+                if (tree.Contains(an.Node) && edgeHasNode)
+                {
+                    currentLength += an.Weight;
+                    GetDistanceToNode(start, an.Node, currentLength, tree, edges, ref path, ref list);
+                    return;
+                }
             }
+            list.Add(new DistToTargetNode(start, start, currentLength));
         }
 
         private static bool IsLeaf(Node node, List<Edge> tree)
