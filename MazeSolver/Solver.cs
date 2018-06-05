@@ -136,69 +136,109 @@ namespace MazeSolver
             result = output;
         }
 
+        public class DistToTargetNode
+        {
+            public DistToTargetNode(Node s, Node t, double d)
+            {
+                start = s;
+                target = t;
+                distance = d;
+            }
+
+            public Node start;
+            public Node target;
+            public double distance;
+        }
+
         private static void GetHubPlacements(ref List<string> hubs, List<Edge> tree)
         {
-            double smallestDiff = double.MaxValue;
-            double min = 0.0;
-            double max = 0.0;
-            Node node = null;
+            List<DistToTargetNode> distances = new List<DistToTargetNode>();
             for (int i = 0; i < tree.Count; i++)
             {
                 Edge e = tree[i];
-                List<AdjacentNode> path = new List<AdjacentNode>();
-                double mi = 0.0f;
-                double ma = 0.0f;
-                GetLengthFromNode(e.A.Near[0], 0.0, ref path, tree, ref mi, ref ma);
-                double diff = ma - mi;
-                if (diff < smallestDiff)
+                List<Node> seen = new List<Node>();
+                for (int j = 0; j < tree.Count; j++)
                 {
-                    smallestDiff = diff;
-                    min = mi;
-                    max = ma;
-                    node = e.A;
-                }
-                mi = 0.0f;
-                ma = 0.0f;
-                path.Clear();
-                GetLengthFromNode(e.B.Near[0], 0.0, ref path, tree, ref mi, ref ma);
-                diff = ma - mi;
-                if (diff < smallestDiff)
-                {
-                    smallestDiff = diff;
-                    min = mi;
-                    max = ma;
-                    node = e.B;
+                    Edge e2 = tree[j];
+                    if (seen.Contains(e2.A) || seen.Contains(e2.B))
+                        continue;
+                    if (e2 == e)
+                        continue;
+
+                    seen.Add(e2.A);
+                    seen.Add(e2.B);
+
+                    AddShortestToList(e, e2, ref distances);
                 }
             }
 
-            if (node != null)
+            DistToTargetNode largest = null;
+            DistToTargetNode nextLargest = null;
+            double smallestDiff = double.MaxValue;
+            foreach (var d in distances)
             {
-                hubs.Add($"{node.Tag} ({max} - {min} {smallestDiff})");
+                if (largest == null || d.distance > largest.distance)
+                {
+                    largest = d;
+                }
+            }
+            foreach (var d in distances)
+            {
+                if (d != largest)
+                {
+                    if (d.target == largest.target)
+                    {
+                        if (nextLargest == null || d.distance > nextLargest.distance)
+                        {
+                            nextLargest = d;
+                        }
+                    }
+                }
+            }
+            smallestDiff = largest.distance - nextLargest.distance;
+
+            if (largest != null && nextLargest != null)
+            {
+                //hubs.Add($"{largest.target.Tag} ({largest.distance} - {nextLargest.distance} = {smallestDiff})");
+                hubs.Add($"{largest.target.Tag}");
             }
         }
 
-        private static void GetLengthFromNode(AdjacentNode node, double currentLength, ref List<AdjacentNode> path, List<Edge> tree, ref double minDist, ref double maxDist)
+        private static void AddShortestToList(Edge destination, Edge start, ref List<DistToTargetNode> list)
         {
-            if (path.Contains(node))
+            List<AdjacentNode> path = new List<AdjacentNode>();
+            GetDistanceToNode(destination.A, start.A, start.A.Near[0], 0.0, ref path, ref list);
+            path.Clear();
+            GetDistanceToNode(destination.B, start.A, start.A.Near[0], 0.0, ref path, ref list);
+            path.Clear();
+            GetDistanceToNode(destination.A, start.B, start.B.Near[0], 0.0, ref path, ref list);
+            path.Clear();
+            GetDistanceToNode(destination.B, start.B, start.B.Near[0], 0.0, ref path, ref list);
+        }
+
+        private static void GetDistanceToNode(Node node, Node start, AdjacentNode current, double currentLength, ref List<AdjacentNode> path, ref List<DistToTargetNode> list)
+        {
+            if (current == null)
                 return;
 
-            currentLength += node.Weight;
-            path.Add(node);
+            if (path.Contains(current))
+                return;
 
-            //TODO: Don't use isleaf function. Figure out the two biggest numbers. Not min and max, but maxest max and next closest max. Determine diff from that.
-            if (IsLeaf(node.Node, tree))
+            path.Add(current);
+            if (node == current.Node)
             {
-                if (currentLength < minDist)
-                    minDist = currentLength;
-                if (currentLength > maxDist)
-                    maxDist = currentLength;
-
+                list.Add(new DistToTargetNode(node, start, currentLength));
                 return;
             }
 
-            foreach (AdjacentNode an in node.Node.Near)
+            currentLength += current.Weight;
+
+            //TODO: Don't use isleaf function. Figure out the two biggest numbers. Not min and max, but maxest max and next closest max. Determine diff from that.
+
+
+            foreach (AdjacentNode an in current.Node.Near)
             {
-                GetLengthFromNode(an, currentLength, ref path, tree, ref minDist, ref maxDist);
+                 GetDistanceToNode(node, start, an, currentLength, ref path, ref list);
             }
         }
 
@@ -262,7 +302,7 @@ namespace MazeSolver
                 sb.Append("\n");
             }
 
-            sb.Append($"Total length: {totalWeight} ft.\n");
+            sb.Append($"\nTotal length: {totalWeight} ft.\n");
 
             return sb.ToString();
         }

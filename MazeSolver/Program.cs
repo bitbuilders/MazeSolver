@@ -16,6 +16,7 @@ namespace MazeSolver
 
         static void RestartProgram()
         {
+            Console.WriteLine("Input a file:");
             string file = GetFileFromUser();
             List<AdjacencyList> lists = new List<AdjacencyList>();
             //ParseMazes(file, lists);
